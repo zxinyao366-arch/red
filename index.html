@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>消消乐</title>
+    <style>
+        :root { --red: #e60012; --gold: #ffd700; --bg: #0a0a0a; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: white; font-family: 'PingFang SC', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; min-height: 100vh; overflow: hidden; }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none; justify-content: center; align-items: center;
+            z-index: 9999; padding: 20px;
+        }
+        .modal-content {
+            background: #1a1a1a; border: 2px solid var(--red);
+            padding: 25px; border-radius: 15px; text-align: center;
+            max-width: 320px; box-shadow: 0 0 20px rgba(230, 0, 18, 0.4);
+        }
+        .modal-content h2 { color: var(--red); margin-top: 0; }
+        .modal-content p { font-size: 0.9rem; line-height: 1.6; color: #ccc; text-align: left; margin: 20px 0; }
+
+        /* 鼓励文字动画 */
+        #feedback {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3.5rem; font-weight: bold; color: var(--gold);
+            text-shadow: 0 0 15px rgba(255,215,0,0.8);
+            pointer-events: none; z-index: 1000; opacity: 0;
+        }
+        .pop-up { animation: popUp 0.8s ease-out forwards; }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -60%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+        }
+
+        /* 统计 */
+        .header { text-align: center; width: 100%; max-width: 400px; margin-top: 10px; margin-bottom: 10px; }
+        .stats-container { display: flex; gap: 10px; justify-content: center; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 12px; border: 1px solid rgba(230,0,18,0.2); flex: 1; }
+        .stat-label { font-size: 0.65rem; color: #888; display: block; letter-spacing: 1px; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: var(--gold); }
+
+        /* 7x7 棋盘 */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 6px; 
+            background: #151515; 
+            padding: 10px; 
+            border-radius: 12px; 
+            border: 2px solid #333; 
+            width: 95vw; max-width: 400px; aspect-ratio: 1 / 1;    
+        }
+        .tile { 
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; 
+            cursor: pointer; background: #222; border: 1px solid #333; 
+            display: flex; align-items: center; justify-content: center; 
+            transition: transform 0.2s, background-color 0.3s;
+            position: relative;
+        }
+        .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; pointer-events: none; }
+        .tile.selected { outline: 3px solid white; transform: scale(1.1); z-index: 10; box-shadow: 0 0 15px white; }
+        
+        .eliminating { transform: scale(0); opacity: 0; transition: all 0.3s ease-in; }
+
+        /* 控制区按钮 */
+        .controls { margin-top: 20px; width: 100%; display: flex; justify-content: center; }
+        .btn { 
+            background: var(--red); color: white; border: none; 
+            padding: 12px 40px; border-radius: 25px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #900;
+            transition: 0.1s;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #900; opacity: 0.9; }
+
+        .signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+    <div id="feedback">Good!</div>
+
+    <!-- 免责声明弹窗 -->
+    <div id="disclaimerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>免责声明</h2>
+            <p>
+                本小程序为粉丝个人非商业娱乐制作，仅供休闲使用。<br><br>
+                游戏内人物肖像版权归原权利人所有，如有侵权请联系，将立即删除下架。
+            </p>
+            <button class="btn" onclick="acceptDisclaimer()">我已知晓</button>
+        </div>
+    </div>
+
+    <!-- 死局弹窗 -->
+    <div id="deadlockModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="color:var(--gold);">Game Over</h2>
+            <p style="text-align:center;">当前棋盘已无解，点击下方按钮重新开始。</p>
+            <button class="btn" onclick="resetGame()">重新开始</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="stats-container">
+            <div class="stat-box">
+                <span class="stat-label">SCORE</span>
+                <span id="score" class="stat-value">0</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">BEST</span>
+                <span id="high-score" class="stat-value">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <!-- 新增重置按钮 -->
+    <div class="controls">
+        <button class="btn" onclick="confirmReset()">重置布局</button>
+    </div>
+
+    <div class="signature">by SinYo</div>
+
+    <script>
+    const width = 7;
+    const gridElement = document.getElementById('grid');
+    const scoreElement = document.getElementById('score');
+    const highScoreElement = document.getElementById('high-score');
+    
+    let squares = [];
+    let score = 0;
+    let highScore = localStorage.getItem('match3_best_score_7x7') || 0;
+    let firstId = null;
+    let isProcessing = false;
+
+    // 已为您拼接好的 GitHub/jsDelivr 图片地址
+    const memberData = [
+        { id: 0, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile0.jpg' },
+        { id: 1, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile1.jpg' },
+        { id: 2, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile2.jpg' },
+        { id: 3, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile3.jpg' },
+        { id: 4, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile4.jpg' },
+        { id: 5, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile5.jpg' },
+        { id: 6, img: 'https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/tile6.jpg' }
+    ];
+
+    highScoreElement.innerText = highScore;
+
+    window.onload = function() {
+        if (!localStorage.getItem('disclaimerAccepted')) {
+            document.getElementById('disclaimerModal').style.display = 'flex';
+        } else {
+            initGame();
+        }
+    };
+
+    function acceptDisclaimer() {
+        localStorage.setItem('disclaimerAccepted', 'true');
+        document.getElementById('disclaimerModal').style.display = 'none';
+        initGame();
+    }
+
+    function initGame() {
+        document.getElementById('deadlockModal').style.display = 'none';
+        gridElement.innerHTML = '';
+        squares = [];
+        score = 0;
+        scoreElement.innerText = score;
+        isProcessing = false;
+        createBoard();
+    }
+
+    function createBoard() {
+        for (let i = 0; i < width * width; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.id = i;
+            let randomMember;
+            let row = Math.floor(i / width);
+            let col = i % width;
+            do {
+                randomMember = memberData[Math.floor(Math.random() * memberData.length)];
+            } while (
+                (col > 1 && squares[i-1].dataset.mid == randomMember.id && squares[i-2].dataset.mid == randomMember.id) ||
+                (row > 1 && squares[i-width].dataset.mid == randomMember.id && squares[i-width*2].dataset.mid == randomMember.id)
+            );
+            tile.dataset.mid = randomMember.id;
+            tile.innerHTML = `<img src="${randomMember.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
+            gridElement.appendChild(tile);
+            squares.push(tile);
+        }
+        if (!hasAvailableMoves()) initGame();
+    }
+
+    function confirmReset() {
+        if(confirm("确定要重置当前布局并清空分数吗？")) {
+            initGame();
+        }
+    }
+
+    gridElement.onclick = function(e) {
+        if (isProcessing) return;
+        const target = e.target.closest('.tile');
+        if (!target) return;
+        const cid = parseInt(target.id);
+
+        if (firstId === null) {
+            firstId = cid;
+            squares[firstId].classList.add('selected');
+        } else {
+            const id1 = firstId;
+            const id2 = cid;
+            const isAdjacent = Math.abs(Math.floor(id1/width) - Math.floor(id2/width)) + Math.abs((id1%width) - (id2%width)) === 1;
+
+            if (isAdjacent) {
+                isProcessing = true;
+                swap(id1, id2);
+                setTimeout(() => {
+                    if (!checkAndProcessMatches()) {
+                        swap(id1, id2);
+                        isProcessing = false;
+                    }
+                }, 300);
+            }
+            squares[id1].classList.remove('selected');
+            firstId = null;
+        }
+    };
+
+    function swap(id1, id2) {
+        const m1 = squares[id1].dataset.mid;
+        const h1 = squares[id1].innerHTML;
+        squares[id1].dataset.mid = squares[id2].dataset.mid;
+        squares[id1].innerHTML = squares[id2].innerHTML;
+        squares[id2].dataset.mid = m1;
+        squares[id2].innerHTML = h1;
+    }
+
+    function checkAndProcessMatches() {
+        let matches = getMatchIndices();
+        if (matches.size > 0) {
+            showPraise(matches.size);
+            score += matches.size * 10;
+            scoreElement.innerText = score;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('match3_best_score_7x7', highScore);
+                highScoreElement.innerText = highScore;
+            }
+            matches.forEach(idx => squares[idx].classList.add('eliminating'));
+            setTimeout(() => {
+                applyGravity();
+            }, 300);
+            return true;
+        }
+        return false;
+    }
+
+    function getMatchIndices() {
+        let matchSet = new Set();
+        for (let r = 0; r < width; r++) {
+            for (let c = 0; c < width - 2; c++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+1].dataset.mid && squares[i].dataset.mid === squares[i+2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+1); matchSet.add(i+2);
+                }
+            }
+        }
+        for (let c = 0; c < width; c++) {
+            for (let r = 0; r < width - 2; r++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+width].dataset.mid && squares[i].dataset.mid === squares[i+width*2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+width); matchSet.add(i+width*2);
+                }
+            }
+        }
+        return matchSet;
+    }
+
+    function applyGravity() {
+        for (let c = 0; c < width; c++) {
+            let emptySpaces = 0;
+            for (let r = width - 1; r >= 0; r--) {
+                let idx = r * width + c;
+                if (squares[idx].classList.contains('eliminating')) {
+                    emptySpaces++;
+                } else if (emptySpaces > 0) {
+                    let targetIdx = (r + emptySpaces) * width + c;
+                    squares[targetIdx].dataset.mid = squares[idx].dataset.mid;
+                    squares[targetIdx].innerHTML = squares[idx].innerHTML;
+                    squares[idx].classList.add('eliminating');
+                }
+            }
+            for (let r = 0; r < emptySpaces; r++) {
+                let idx = r * width + c;
+                let m = memberData[Math.floor(Math.random() * memberData.length)];
+                squares[idx].dataset.mid = m.id;
+                squares[idx].innerHTML = `<img src="${m.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
+                squares[idx].classList.remove('eliminating');
+            }
+        }
+        squares.forEach(s => s.classList.remove('eliminating'));
+        setTimeout(() => {
+            if (!checkAndProcessMatches()) {
+                isProcessing = false;
+                if (!hasAvailableMoves()) document.getElementById('deadlockModal').style.display = 'flex';
+            }
+        }, 300);
+    }
+
+    function showPraise(count) {
+        let msg = count >= 6 ? "Amazing!" : (count >= 4 ? "Great!" : "Good!");
+        const f = document.getElementById('feedback');
+        f.innerText = msg;
+        f.classList.remove('pop-up');
+        void f.offsetWidth;
+        f.classList.add('pop-up');
+    }
+
+    function hasAvailableMoves() {
+        for (let i = 0; i < width * width; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 1) if (testSwap(i, i + 1)) return true;
+            if (r < width - 1) if (testSwap(i, i + width)) return true;
+        }
+        return false;
+    }
+
+    function testSwap(id1, id2) {
+        let mids = squares.map(s => s.dataset.mid);
+        [mids[id1], mids[id2]] = [mids[id2], mids[id1]];
+        for (let i = 0; i < width * width; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 2 && mids[i] === mids[i+1] && mids[i] === mids[i+2]) return true;
+            if (r < width - 2 && mids[i] === mids[i+width] && mids[i] === mids[i+width*2]) return true;
+        }
+        return false;
+    }
+
+    function resetGame() { initGame(); }
+    </script>
+</body>
+</html>
