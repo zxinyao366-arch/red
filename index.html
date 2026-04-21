@@ -3,200 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>R.E.D - 消消乐</title>
+    <title>R.E.D 消消乐 </title>
     <style>
-        :root { 
-            --red: #e60012; 
-            --gold: #ffd700; 
-            --dark-glass: rgba(20, 20, 20, 0.85);
-            --card-bg: rgba(255, 255, 255, 0.08);
-            --glow: 0 0 15px rgba(230, 0, 18, 0.4);
-        }
+        :root { --red: #e60012; --gold: #ffd700; --bg: #0a0a0a; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: white; font-family: 'PingFang SC', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; min-height: 100vh; overflow: hidden; }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-
-        body { 
-            background: radial-gradient(circle at center, #2a0508 0%, #0a0a0a 100%);
-            color: white; 
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 0; margin: 0; min-height: 100vh; overflow: hidden; 
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none; justify-content: center; align-items: center;
+            z-index: 9999; padding: 20px;
         }
-
-        /* 动态背景效果 */
-        body::before {
-            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://www.transparenttextures.com/patterns/stardust.png');
-            opacity: 0.3; pointer-events: none; z-index: -1;
+        .modal-content {
+            background: #1a1a1a; border: 2px solid var(--red);
+            padding: 25px; border-radius: 20px; text-align: center;
+            max-width: 340px; width: 90%; box-shadow: 0 0 30px rgba(230, 0, 18, 0.5);
         }
-
-        /* 玻璃拟态弹窗 */
-        .modal-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px);
-            display: none; justify-content: center; align-items: center; 
-            z-index: 9999; 
-        }
-        .modal-content { 
-            background: var(--dark-glass); border: 1px solid rgba(255,215,0,0.3); 
-            padding: 30px; border-radius: 24px; text-align: center; 
-            max-width: 380px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes modalPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-        /* 造型选择卡片 */
-        .theme-selector { display: grid; grid-template-columns: 1fr; gap: 15px; margin: 25px 0; }
-        .theme-option { 
-            border: 1px solid rgba(255,255,255,0.1); padding: 18px; border-radius: 16px; 
-            cursor: pointer; transition: all 0.3s ease; background: var(--card-bg);
-            font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; color: #ccc;
-        }
-        .theme-option.active { 
-            border-color: var(--gold); background: rgba(255, 215, 0, 0.15); 
-            color: var(--gold); transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.2);
-        }
-
-        /* 头部数据区 */
-        .header { width: 100%; max-width: 420px; padding: 20px 15px 10px; z-index: 10; }
-        .high-score-bar { font-size: 0.75rem; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; text-align: center; opacity: 0.8; }
+        .modal-content h2 { color: var(--red); margin: 0 0 15px 0; font-size: 1.5rem; }
+        .modal-content p { font-size: 0.95rem; line-height: 1.6; color: #ccc; margin: 10px 0; }
         
-        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .stat-box { 
-            background: var(--card-bg); padding: 12px 5px; border-radius: 15px; 
-            border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(4px);
-            text-align: center; transition: transform 0.3s;
-        }
-        .stat-label { font-size: 0.6rem; color: #aaa; display: block; margin-bottom: 4px; text-transform: uppercase; }
-        .stat-value { font-size: 1.2rem; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        /* 结算数字样式 */
+        .result-score { font-size: 3rem; font-weight: bold; color: var(--gold); margin: 10px 0; display: block; }
+        .result-detail { font-size: 1.1rem; color: white; margin-bottom: 20px; display: block; }
 
-        /* 棋盘美化 */
-        .grid-container {
-            position: relative; padding: 8px; background: rgba(255,255,255,0.03);
-            border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5); margin-bottom: 20px;
-        }
-        .grid { 
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; 
-            width: 92vw; max-width: 400px; aspect-ratio: 1 / 1; 
-        }
-        .tile { 
-            width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; 
-            cursor: pointer; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.05); 
-            display: flex; align-items: center; justify-content: center; 
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
-            position: relative; overflow: hidden;
-        }
-        .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; transition: 0.3s; }
-        
-        /* 选中特效 */
-        .tile.selected { 
-            transform: scale(1.1); z-index: 10; 
-            box-shadow: 0 0 20px var(--gold); border-color: var(--gold);
-            animation: pulse 1s infinite alternate;
-        }
-        @keyframes pulse { from { box-shadow: 0 0 10px var(--gold); } to { box-shadow: 0 0 25px var(--gold); } }
+        /* 统计区 */
+        .header { text-align: center; width: 100%; max-width: 420px; margin-top: 5px; }
+        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(230,0,18,0.2); }
+        .stat-label { font-size: 0.65rem; color: #888; display: block; margin-bottom: 2px; }
+        .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--gold); }
+        .high-score-bar { font-size: 0.8rem; color: #666; margin-bottom: 8px; }
 
-        /* 消除动画 */
-        .eliminating { animation: vanish 0.3s forwards; }
-        @keyframes vanish { 0% { transform: scale(1); } 50% { transform: scale(1.2); opacity: 0.5; } 100% { transform: scale(0); opacity: 0; } }
-
-        /* 震动特效类 */
-        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-
-        /* 按钮设计 */
-        .btn { 
-            background: linear-gradient(135deg, var(--red) 0%, #900 100%);
-            color: white; border: none; padding: 14px 40px; border-radius: 30px; 
-            cursor: pointer; font-weight: bold; font-size: 1.1rem; 
-            box-shadow: 0 6px 20px rgba(230, 0, 18, 0.3);
-            transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .btn:active { transform: scale(0.95); box-shadow: 0 2px 10px rgba(230, 0, 18, 0.3); }
-        .btn-secondary { background: rgba(255,255,255,0.15); box-shadow: none; color: #ddd; padding: 10px 25px; font-size: 0.9rem; }
-
-        /* 浮动分数提示 */
-        .floating-score {
-            position: absolute; color: var(--gold); font-weight: bold; font-size: 1.5rem;
-            pointer-events: none; animation: floatUp 0.8s ease-out forwards; z-index: 100;
-        }
-        @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
-
-        /* 反馈文字 */
-        #feedback { 
-            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 3.5rem; font-weight: 900; color: #fff; font-style: italic;
-            text-shadow: 0 0 20px var(--red), 0 0 40px var(--red); 
-            pointer-events: none; z-index: 1000; opacity: 0; 
+        /* 鼓励文字 */
+        #feedback {
+            position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3rem; font-weight: bold; color: var(--gold);
+            text-shadow: 0 0 15px rgba(255,215,0,0.8);
+            pointer-events: none; z-index: 1000; opacity: 0; text-align: center; width: 100%;
         }
         .pop-up { animation: popUp 0.8s ease-out forwards; }
-        @keyframes popUp { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 30% { opacity: 1; transform: translate(-50%, -60%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -80%) scale(1); } }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+        }
 
-        .signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: rgba(255,255,255,0.1); letter-spacing: 2px; }
+        /* 棋盘 */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 5px; 
+            background: #151515; padding: 8px; border-radius: 12px; border: 2px solid #333; 
+            width: 95vw; max-width: 400px; aspect-ratio: 1 / 1;    
+        }
+        .tile { 
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; 
+            cursor: pointer; background: #222; border: 1px solid #333; 
+            display: flex; align-items: center; justify-content: center; 
+            transition: transform 0.2s; position: relative;
+        }
+        .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; pointer-events: none; }
+        .tile.selected { outline: 3px solid white; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px white; }
+        .eliminating { transform: scale(0); opacity: 0; transition: all 0.3s ease-in; }
+
+        .controls { margin-top: 15px; }
+        .btn { 
+            background: var(--red); color: white; border: none; 
+            padding: 12px 35px; border-radius: 25px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #900;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #900; }
+        .signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
 
-    <div id="feedback">EXCELLENT!</div>
+    <div id="feedback">好棒！</div>
 
-    <!-- 初始模式选择弹窗 -->
-    <div id="startModal" class="modal-overlay" style="display: flex;">
+    <!-- 规则说明 -->
+    <div id="disclaimerModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 style="color:var(--gold); letter-spacing: 4px;">R.E.D STAGE</h2>
-            <p>请选择风格</p>
-            
-            <div class="theme-selector">
-                <div class="theme-option active" id="theme-mv" onclick="pickTheme('mv')">MV 版造型</div>
-                <div class="theme-option" id="theme-festival" onclick="pickTheme('festival')">音乐节造型</div>
-                <div class="theme-option" id="theme-stage" onclick="pickTheme('stage')">打歌造型</div>
-            </div>
-
-            <button class="btn" onclick="startGame()">开始游戏</button>
-            <p style="margin-top: 20px; font-size: 0.7rem; color: #666;">规则：无效移动会消耗体力，连击可恢复体力</p>
+            <h2>挑战规则</h2>
+            <p style="text-align: left;">
+                • 交换头像，凑成3个即可消除。<br>
+                • <span style="color:#ff4444; font-weight:bold;">单次移动必消</span>，否则扣除1步体力。<br>
+                • 达到目标分<b>等级提升</b>并<b>恢复体力</b>。<br>
+                • 消除4个以上头像<b>奖励1步体力</b>。<br>
+                • 棋盘无解时将自动重排。
+            </p>
+            <button class="btn" onclick="acceptDisclaimer()">开启挑战</button>
         </div>
     </div>
 
-    <!-- 结算弹窗 -->
+    <!-- 结算画面 -->
     <div id="resultModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="resTitle" style="color:var(--gold);">挑战报幕</h2>
-            <p style="color:#888;">FINAL SCORE</p>
-            <span id="finalScore" class="stat-value" style="font-size: 3.5rem; color:var(--gold); display: block; margin: 10px 0;">0</span>
-            <span id="finalDetail" style="display: block; margin-bottom: 25px; color:#fff;">到达等级: 1</span>
-            <button class="btn" onclick="backToMenu()">重返后台</button>
+            <h2 id="resultTitle">挑战结束</h2>
+            <span class="stat-label">最终得分</span>
+            <span id="finalScore" class="result-score">0</span>
+            <span id="finalDetail" class="result-detail">等级: 1</span>
+            <p id="highScoreNote" style="color:var(--gold); font-weight:bold; display:none;">新纪录！</p>
+            <button class="btn" onclick="initGame()">重新开始</button>
         </div>
     </div>
 
     <div class="header">
         <div class="high-score-bar">最高纪录: <span id="high-score">0</span></div>
         <div class="stats-container">
-            <div class="stat-box" id="moves-box">
-                <span class="stat-label">剩余体力</span>
+            <div class="stat-box">
+                <span class="stat-label">体力(步数)</span>
                 <span id="moves" class="stat-value">30</span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">当前得分</span>
+                <span class="stat-label">当前分数</span>
                 <span id="score" class="stat-value">0</span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">当前等级</span>
-                <span id="goal-level" class="stat-value">1</span>
+                <span class="stat-label">目标/等级</span>
+                <span id="goal-level" class="stat-value">500 / 1</span>
             </div>
         </div>
     </div>
 
-    <div class="grid-container" id="grid-container">
-        <div class="grid" id="grid"></div>
+    <div class="grid" id="grid"></div>
+
+    <div class="controls">
+        <button class="btn" onclick="confirmReset()">重置游戏</button>
     </div>
 
-    <div style="display: flex; gap: 15px;">
-        <button class="btn btn-secondary" onclick="confirmBack()">菜单</button>
-        <button class="btn btn-secondary" onclick="confirmReset()">重置</button>
-    </div>
-
-    <div class="signature">DESIGN BY SINYO</div>
+    <div class="signature">by SinYo</div>
 
     <script>
     const width = 7;
@@ -205,7 +142,6 @@
     const movesElement = document.getElementById('moves');
     const goalLevelElement = document.getElementById('goal-level');
     const highScoreElement = document.getElementById('high-score');
-    const gridContainer = document.getElementById('grid-container');
     
     let squares = [];
     let score = 0;
@@ -216,31 +152,31 @@
     let firstId = null;
     let isProcessing = false;
 
-   // 修改前
-const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
-    const themeData = {
-        mv: [0,1,2,3,4,5,6],
-        festival: [7,8,9,10,11,12,13],
-        stage: [14,15,16,17,18,19,20]
-    };
-    
-    let currentTheme = 'mv';
-    let currentMemberPool = [];
+    // CDN图片
+    const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
+    const memberData = [
+        { id: 0, img: baseUrl + 'tile0.jpg' },
+        { id: 1, img: baseUrl + 'tile1.jpg' },
+        { id: 2, img: baseUrl + 'tile2.jpg' },
+        { id: 3, img: baseUrl + 'tile3.jpg' },
+        { id: 4, img: baseUrl + 'tile4.jpg' },
+        { id: 5, img: baseUrl + 'tile5.jpg' },
+        { id: 6, img: baseUrl + 'tile6.jpg' }
+    ];
 
     highScoreElement.innerText = highScore;
 
-    function pickTheme(t) {
-        currentTheme = t;
-        document.querySelectorAll('.theme-option').forEach(el => el.classList.remove('active'));
-        document.getElementById('theme-' + t).classList.add('active');
-    }
+    window.onload = function() {
+        if (!localStorage.getItem('redGameRulesV3')) {
+            document.getElementById('disclaimerModal').style.display = 'flex';
+        } else {
+            initGame();
+        }
+    };
 
-    function startGame() {
-        currentMemberPool = themeData[currentTheme].map(id => ({
-            id: id,
-            img: `${baseUrl}tile${id}.jpg`
-        }));
-        document.getElementById('startModal').style.display = 'none';
+    function acceptDisclaimer() {
+        localStorage.setItem('redGameRulesV3', 'true');
+        document.getElementById('disclaimerModal').style.display = 'none';
         initGame();
     }
 
@@ -248,7 +184,10 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
         document.getElementById('resultModal').style.display = 'none';
         gridElement.innerHTML = '';
         squares = [];
-        score = 0; moves = 30; level = 1; targetScore = 500;
+        score = 0;
+        moves = 30; 
+        level = 1;
+        targetScore = 500;
         updateUI();
         isProcessing = false;
         createBoard();
@@ -257,15 +196,10 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
     function updateUI() {
         scoreElement.innerText = score;
         movesElement.innerText = moves;
-        goalLevelElement.innerText = level;
+        goalLevelElement.innerText = `${targetScore} / ${level}`;
         if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('match3_red_best', highScore);
-            highScoreElement.innerText = highScore;
+            highScoreElement.innerText = score;
         }
-        // 体力不足提示
-        if (moves <= 5) movesElement.style.color = "var(--red)";
-        else movesElement.style.color = "#fff";
     }
 
     function createBoard() {
@@ -273,6 +207,7 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
             const tile = document.createElement('div');
             tile.className = 'tile';
             tile.id = i;
+            tile.dataset.mid = "";
             gridElement.appendChild(tile);
             squares.push(tile);
         }
@@ -285,32 +220,38 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
             let row = Math.floor(i / width);
             let col = i % width;
             do {
-                randomMember = currentMemberPool[Math.floor(Math.random() * currentMemberPool.length)];
+                randomMember = memberData[Math.floor(Math.random() * memberData.length)];
             } while (
                 (col > 1 && squares[i-1].dataset.mid == randomMember.id && squares[i-2].dataset.mid == randomMember.id) ||
                 (row > 1 && squares[i-width].dataset.mid == randomMember.id && squares[i-width*2].dataset.mid == randomMember.id)
             );
             tile.dataset.mid = randomMember.id;
-            tile.innerHTML = `<img src="${randomMember.img}">`;
+            tile.innerHTML = `<img src="${randomMember.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
         });
-        if (!hasAvailableMoves()) shuffleBoard(); 
+        if (!hasAvailableMoves()) {
+            shuffleBoard(); 
+        }
     }
 
+    // 自动洗牌逻辑：解决死局
     function shuffleBoard() {
-        gridContainer.classList.add('shake');
-        setTimeout(() => gridContainer.classList.remove('shake'), 300);
-        
-        let mids = squares.map(s => s.dataset.mid);
-        for (let i = mids.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [mids[i], mids[j]] = [mids[j], mids[i]];
+        let attempts = 0;
+        while (!hasAvailableMoves() && attempts < 100) {
+            let mids = squares.map(s => s.dataset.mid);
+            // 随机打乱数组
+            for (let i = mids.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [mids[i], mids[j]] = [mids[j], mids[i]];
+            }
+            // 重新应用到棋盘
+            squares.forEach((tile, i) => {
+                tile.dataset.mid = mids[i];
+                const member = memberData.find(m => m.id == mids[i]);
+                tile.innerHTML = `<img src="${member.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
+            });
+            attempts++;
         }
-        squares.forEach((tile, i) => {
-            tile.dataset.mid = mids[i];
-            tile.innerHTML = `<img src="${baseUrl}tile${mids[i]}.jpg">`;
-        });
-        if (!hasAvailableMoves()) shuffleBoard();
-        showPraise("RE-STAGE", false);
+        showPraise("棋盘重排", false);
     }
 
     gridElement.onclick = function(e) {
@@ -334,10 +275,10 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
                 swap(id1, id2);
                 setTimeout(() => {
                     if (checkAndProcessMatches()) {
-                        // 连击成功
+                        // 消除成功逻辑在内部
                     } else {
                         swap(id1, id2);
-                        showPraise("MISS -1", true);
+                        showPraise("无效移动 -1", true);
                         isProcessing = false;
                         checkGameState();
                     }
@@ -362,37 +303,17 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
         if (matches.size > 0) {
             if (matches.size >= 4) {
                 moves += 1;
-                showPraise("COMBO +1", false);
-                gridContainer.classList.add('shake');
-                setTimeout(() => gridContainer.classList.remove('shake'), 200);
+                showPraise("技术奖励 +1");
             } else {
                 showPraise(null);
             }
-
-            const currentGain = matches.size * 10;
-            score += currentGain;
-            
-            // 浮动分数效果
-            const firstTile = squares[Array.from(matches)[0]];
-            createFloatingScore(firstTile, currentGain);
-            
+            score += matches.size * 10;
             updateUI();
             matches.forEach(idx => squares[idx].classList.add('eliminating'));
             setTimeout(() => applyGravity(), 300);
             return true;
         }
         return false;
-    }
-
-    function createFloatingScore(element, gain) {
-        const rect = element.getBoundingClientRect();
-        const floatS = document.createElement('div');
-        floatS.className = 'floating-score';
-        floatS.innerText = `+${gain}`;
-        floatS.style.left = rect.left + 'px';
-        floatS.style.top = rect.top + 'px';
-        document.body.appendChild(floatS);
-        setTimeout(() => floatS.remove(), 800);
     }
 
     function applyGravity() {
@@ -411,7 +332,7 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
             }
             for (let r = 0; r < emptySpaces; r++) {
                 let idx = r * width + c;
-                let m = currentMemberPool[Math.floor(Math.random() * currentMemberPool.length)];
+                let m = memberData[Math.floor(Math.random() * memberData.length)];
                 squares[idx].dataset.mid = m.id;
                 squares[idx].innerHTML = `<img src="${m.img}">`;
                 squares[idx].classList.remove('eliminating');
@@ -436,16 +357,34 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
             updateUI();
         } 
         if (moves <= 0 && !isProcessing) {
-            document.getElementById('finalScore').innerText = score;
-            document.getElementById('finalDetail').innerText = `FINAL LEVEL: ${level}`;
-            document.getElementById('resultModal').style.display = 'flex';
+            showResult();
         }
+    }
+
+    function showResult() {
+        const modal = document.getElementById('resultModal');
+        const finalScore = document.getElementById('finalScore');
+        const finalDetail = document.getElementById('finalDetail');
+        const note = document.getElementById('highScoreNote');
+        
+        finalScore.innerText = score;
+        finalDetail.innerText = `到达等级: ${level}`;
+        
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('match3_red_best', highScore);
+            highScoreElement.innerText = highScore;
+            note.style.display = 'block';
+        } else {
+            note.style.display = 'none';
+        }
+        modal.style.display = 'flex';
     }
 
     function showPraise(msg, isWarning = false) {
         const f = document.getElementById('feedback');
-        f.innerText = msg || ["FANTASTIC!", "GREAT!", "AMAZING!"][Math.floor(Math.random()*3)];
-        f.style.textShadow = isWarning ? "0 0 20px #f00" : "0 0 20px var(--gold)";
+        f.innerText = msg || ["Good！", "Great！", "Amazing！"][Math.floor(Math.random()*3)];
+        f.style.color = isWarning ? "#ff4444" : "var(--gold)";
         f.classList.remove('pop-up');
         void f.offsetWidth;
         f.classList.add('pop-up');
@@ -454,8 +393,8 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
     function hasAvailableMoves() {
         for (let i = 0; i < width * width; i++) {
             let r = Math.floor(i / width), c = i % width;
-            if (c < width - 1 && testSwap(i, i + 1)) return true;
-            if (r < width - 1 && testSwap(i, i + width)) return true;
+            if (c < width - 1) if (testSwap(i, i + 1)) return true;
+            if (r < width - 1) if (testSwap(i, i + width)) return true;
         }
         return false;
     }
@@ -469,6 +408,10 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
             if (r < width - 2 && mids[i] === mids[i+width] && mids[i] === mids[i+width*2]) return true;
         }
         return false;
+    }
+
+    function confirmReset() {
+        if(confirm("确定要重置并清空得分吗？")) initGame();
     }
 
     function getMatchIndices() {
@@ -491,15 +434,6 @@ const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
         }
         return matchSet;
     }
-
-    function confirmBack() { if(confirm("确定要放弃本场演出返回后台吗？")) backToMenu(); }
-    function backToMenu() {
-        document.getElementById('resultModal').style.display = 'none';
-        document.getElementById('startModal').style.display = 'flex';
-        gridElement.innerHTML = '';
-        isProcessing = false;
-    }
-    function confirmReset() { if(confirm("重置本场进度？")) initGame(); }
     </script>
 </body>
 </html>
