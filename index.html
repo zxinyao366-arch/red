@@ -7,41 +7,96 @@
     <style>
         :root { --red: #e60012; --gold: #ffd700; --bg: #0a0a0a; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg); color: white; font-family: 'PingFang SC', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; min-height: 100vh; overflow: hidden; }
+        
+        body { 
+            background-color: var(--bg); color: white; font-family: 'PingFang SC', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 10px; margin: 0; min-height: 100vh; overflow-y: auto; 
+        }
 
-        /* 弹窗样式 */
+        /* 顶部统计区 */
+        .header { text-align: center; width: 100%; max-width: 400px; margin-bottom: 10px; flex-shrink: 0; }
+        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(230,0,18,0.3); }
+        .stat-label { font-size: 0.7rem; color: #888; display: block; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: var(--gold); }
+
+        /* 6x10 棋盘容器 */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(6, 1fr); 
+            gap: 6px; 
+            background: #1a1a1a; padding: 10px; 
+            border-radius: 15px; border: 2px solid #333; 
+            width: 95vw; max-width: 400px; 
+            margin: 10px auto; flex-shrink: 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* 方块基础 */
+        .tile { 
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; 
+            cursor: pointer; background: #222; position: relative; 
+            display: flex; align-items: center; justify-content: center;
+            overflow: visible; /* 允许发光效果溢出 */
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .tile img { 
+            width: 100%; height: 100%; object-fit: cover; 
+            border-radius: 6px; pointer-events: none; 
+        }
+
+        /* --- 核心修复：选中特效 --- */
+        .tile.selected { 
+            z-index: 10;
+            transform: scale(1.15); /* 明显放大 */
+            outline: 3px solid #fff;
+            box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.8); /* 强力白色发光 */
+            animation: pulse 1s infinite alternate; /* 增加呼吸感 */
+        }
+        @keyframes pulse {
+            from { box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.6); }
+            to { box-shadow: 0 0 25px 10px rgba(255, 255, 255, 0.9); }
+        }
+
+        /* --- 核心修复：消除特效 --- */
+        .tile.eliminating { 
+            animation: eliminateAnim 0.3s ease-in forwards;
+            pointer-events: none;
+        }
+        @keyframes eliminateAnim {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); filter: brightness(2); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* 控制按钮 */
+        .controls { margin: 15px 0 30px 0; }
+        .btn { 
+            background: var(--red); color: white; border: none; 
+            padding: 12px 35px; border-radius: 25px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #900;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #900; }
+        .btn-reset { background: #333; box-shadow: 0 4px 0 #111; }
+
+        /* 弹窗与文字反馈 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.95);
             display: none; justify-content: center; align-items: center;
-            z-index: 9999; padding: 20px;
+            z-index: 9999;
         }
         .modal-content {
             background: #1a1a1a; border: 2px solid var(--red);
-            padding: 25px; border-radius: 20px; text-align: center;
-            max-width: 340px; width: 90%; box-shadow: 0 0 30px rgba(230, 0, 18, 0.5);
+            padding: 30px; border-radius: 20px; text-align: center;
+            width: 85%; max-width: 340px;
         }
-        .modal-content h2 { color: var(--red); margin: 0 0 15px 0; font-size: 1.5rem; }
-        .modal-content p { font-size: 0.95rem; line-height: 1.6; color: #ccc; margin: 10px 0; }
-        
-        /* 结算数字样式 */
-        .result-score { font-size: 3rem; font-weight: bold; color: var(--gold); margin: 10px 0; display: block; }
-        .result-detail { font-size: 1.1rem; color: white; margin-bottom: 20px; display: block; }
-
-        /* 统计区 */
-        .header { text-align: center; width: 100%; max-width: 420px; margin-top: 5px; }
-        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-        .stat-box { background: rgba(255,255,255,0.05); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(230,0,18,0.2); }
-        .stat-label { font-size: 0.65rem; color: #888; display: block; margin-bottom: 2px; }
-        .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--gold); }
-        .high-score-bar { font-size: 0.8rem; color: #666; margin-bottom: 8px; }
-
-        /* 鼓励文字 */
         #feedback {
-            position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 3rem; font-weight: bold; color: var(--gold);
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: bold; color: var(--gold);
             text-shadow: 0 0 15px rgba(255,215,0,0.8);
-            pointer-events: none; z-index: 1000; opacity: 0; text-align: center; width: 100%;
+            pointer-events: none; z-index: 1000; opacity: 0;
         }
         .pop-up { animation: popUp 0.8s ease-out forwards; }
         @keyframes popUp {
@@ -49,72 +104,40 @@
             30% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
             100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
         }
-
-        /* 棋盘 */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 5px; 
-            background: #151515; padding: 8px; border-radius: 12px; border: 2px solid #333; 
-            width: 95vw; max-width: 400px; aspect-ratio: 1 / 1;    
-        }
-        .tile { 
-            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; 
-            cursor: pointer; background: #222; border: 1px solid #333; 
-            display: flex; align-items: center; justify-content: center; 
-            transition: transform 0.2s; position: relative;
-        }
-        .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; pointer-events: none; }
-        .tile.selected { outline: 3px solid white; transform: scale(1.05); z-index: 10; box-shadow: 0 0 15px white; }
-        .eliminating { transform: scale(0); opacity: 0; transition: all 0.3s ease-in; }
-
-        .controls { margin-top: 15px; }
-        .btn { 
-            background: var(--red); color: white; border: none; 
-            padding: 12px 35px; border-radius: 25px; cursor: pointer; 
-            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #900;
-        }
-        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #900; }
-        .signature { position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
 
     <div id="feedback">Good！</div>
 
-    <!-- 规则说明 -->
     <div id="disclaimerModal" class="modal-overlay">
         <div class="modal-content">
-            <h2>挑战规则</h2>
-            <p style="text-align: left;">
-                • 交换头像，凑成3个即可消除。<br>
-                • <span style="color:#ff4444; font-weight:bold;">单次移动必消</span>，否则扣除1步体力。<br>
-                • 达到目标分<b>等级提升</b>并<b>恢复体力</b>。<br>
-                • 消除4个以上头像<b>奖励1步体力</b>。<br>
-                • 棋盘无解时将自动重排。
+            <h2>R.E.D 消消乐</h2>
+            <p style="text-align: left; font-size: 0.9rem; line-height: 1.6; color: #ccc;">
+                • 交换头像，连成3个即可消除。<br>
+                • 移动必须产生消除，否则扣除1步。<br>
+                • 消除4个及以上奖励1步。<br>
+                • 达到目标分升级并大幅恢复体力。
             </p>
             <button class="btn" onclick="acceptDisclaimer()">开启挑战</button>
         </div>
     </div>
 
-    <!-- 结算画面 -->
     <div id="resultModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="resultTitle">挑战结束</h2>
-            <span class="stat-label">最终得分</span>
-            <span id="finalScore" class="result-score">0</span>
-            <span id="finalDetail" class="result-detail">等级: 1</span>
-            <p id="highScoreNote" style="color:var(--gold); font-weight:bold; display:none;">新纪录！</p>
+            <h2>挑战结束</h2>
+            <span style="color: #888; font-size: 0.9rem;">最终得分</span>
+            <div id="finalScore" style="font-size: 3rem; font-weight: bold; color: var(--gold); margin: 10px 0;">0</div>
             <button class="btn" onclick="initGame()">重新开始</button>
         </div>
     </div>
 
     <div class="header">
-        <div class="high-score-bar">最高纪录: <span id="high-score">0</span></div>
+        <div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">最高纪录: <span id="high-score">0</span></div>
         <div class="stats-container">
             <div class="stat-box">
                 <span class="stat-label">体力(步数)</span>
-                <span id="moves" class="stat-value">30</span>
+                <span id="moves" class="stat-value">35</span>
             </div>
             <div class="stat-box">
                 <span class="stat-label">当前分数</span>
@@ -130,13 +153,12 @@
     <div class="grid" id="grid"></div>
 
     <div class="controls">
-        <button class="btn" onclick="confirmReset()">重置游戏</button>
+        <button class="btn btn-reset" onclick="confirmReset()">重置游戏</button>
     </div>
 
-    <div class="signature">by SinYo</div>
-
     <script>
-    const width = 7;
+    const width = 6;
+    const height = 10;
     const gridElement = document.getElementById('grid');
     const scoreElement = document.getElementById('score');
     const movesElement = document.getElementById('moves');
@@ -145,14 +167,13 @@
     
     let squares = [];
     let score = 0;
-    let moves = 30; 
+    let moves = 35; 
     let level = 1;
     let targetScore = 500;
     let highScore = localStorage.getItem('match3_red_best') || 0;
     let firstId = null;
     let isProcessing = false;
 
-    // CDN图片
     const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
     const memberData = [
         { id: 0, img: baseUrl + 'tile0.jpg' },
@@ -185,7 +206,7 @@
         gridElement.innerHTML = '';
         squares = [];
         score = 0;
-        moves = 30; 
+        moves = 35; 
         level = 1;
         targetScore = 500;
         updateUI();
@@ -198,16 +219,17 @@
         movesElement.innerText = moves;
         goalLevelElement.innerText = `${targetScore} / ${level}`;
         if (score > highScore) {
-            highScoreElement.innerText = score;
+            highScore = score;
+            highScoreElement.innerText = highScore;
+            localStorage.setItem('match3_red_best', highScore);
         }
     }
 
     function createBoard() {
-        for (let i = 0; i < width * width; i++) {
+        for (let i = 0; i < width * height; i++) {
             const tile = document.createElement('div');
             tile.className = 'tile';
             tile.id = i;
-            tile.dataset.mid = "";
             gridElement.appendChild(tile);
             squares.push(tile);
         }
@@ -226,32 +248,9 @@
                 (row > 1 && squares[i-width].dataset.mid == randomMember.id && squares[i-width*2].dataset.mid == randomMember.id)
             );
             tile.dataset.mid = randomMember.id;
-            tile.innerHTML = `<img src="${randomMember.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
+            tile.innerHTML = `<img src="${randomMember.img}">`;
         });
-        if (!hasAvailableMoves()) {
-            shuffleBoard(); 
-        }
-    }
-
-    // 自动洗牌逻辑：解决死局
-    function shuffleBoard() {
-        let attempts = 0;
-        while (!hasAvailableMoves() && attempts < 100) {
-            let mids = squares.map(s => s.dataset.mid);
-            // 随机打乱数组
-            for (let i = mids.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [mids[i], mids[j]] = [mids[j], mids[i]];
-            }
-            // 重新应用到棋盘
-            squares.forEach((tile, i) => {
-                tile.dataset.mid = mids[i];
-                const member = memberData.find(m => m.id == mids[i]);
-                tile.innerHTML = `<img src="${member.img}" onerror="this.style.visibility='hidden';this.parentElement.style.background='#333'">`;
-            });
-            attempts++;
-        }
-        showPraise("棋盘重排", false);
+        if (!hasAvailableMoves()) shuffleBoard();
     }
 
     gridElement.onclick = function(e) {
@@ -266,25 +265,30 @@
         } else {
             const id1 = firstId;
             const id2 = cid;
-            const isAdjacent = Math.abs(Math.floor(id1/width) - Math.floor(id2/width)) + Math.abs((id1%width) - (id2%width)) === 1;
+            const isAdj = Math.abs(Math.floor(id1/width) - Math.floor(id2/width)) + Math.abs((id1%width) - (id2%width)) === 1;
 
-            if (isAdjacent) {
+            // 先移除之前的选中样式
+            squares[id1].classList.remove('selected');
+
+            if (isAdj) {
                 isProcessing = true;
-                moves--; 
+                moves--;
                 updateUI();
                 swap(id1, id2);
                 setTimeout(() => {
-                    if (checkAndProcessMatches()) {
-                        // 消除成功逻辑在内部
-                    } else {
+                    if (!checkAndProcessMatches()) {
                         swap(id1, id2);
-                        showPraise("无效移动 -1", true);
+                        showPraise("无效移动", true);
                         isProcessing = false;
                         checkGameState();
                     }
                 }, 300);
+            } else {
+                // 如果点选了非相邻的，切换选择对象
+                firstId = cid;
+                squares[firstId].classList.add('selected');
+                return;
             }
-            if(squares[id1]) squares[id1].classList.remove('selected');
             firstId = null;
         }
     };
@@ -301,15 +305,14 @@
     function checkAndProcessMatches() {
         let matches = getMatchIndices();
         if (matches.size > 0) {
-            if (matches.size >= 4) {
-                moves += 1;
-                showPraise("技术奖励 +1");
-            } else {
-                showPraise(null);
-            }
+            if (matches.size >= 4) { moves += 1; showPraise("连消奖励+1"); }
+            else { showPraise(null); }
             score += matches.size * 10;
             updateUI();
+            
+            // 触发消除动画
             matches.forEach(idx => squares[idx].classList.add('eliminating'));
+            
             setTimeout(() => applyGravity(), 300);
             return true;
         }
@@ -319,7 +322,7 @@
     function applyGravity() {
         for (let c = 0; c < width; c++) {
             let emptySpaces = 0;
-            for (let r = width - 1; r >= 0; r--) {
+            for (let r = height - 1; r >= 0; r--) {
                 let idx = r * width + c;
                 if (squares[idx].classList.contains('eliminating')) {
                     emptySpaces++;
@@ -327,9 +330,10 @@
                     let targetIdx = (r + emptySpaces) * width + c;
                     squares[targetIdx].dataset.mid = squares[idx].dataset.mid;
                     squares[targetIdx].innerHTML = squares[idx].innerHTML;
-                    squares[idx].classList.add('eliminating');
+                    squares[idx].classList.add('eliminating'); // 标记为旧位需要清空
                 }
             }
+            // 填充顶部新出的方块
             for (let r = 0; r < emptySpaces; r++) {
                 let idx = r * width + c;
                 let m = memberData[Math.floor(Math.random() * memberData.length)];
@@ -338,7 +342,9 @@
                 squares[idx].classList.remove('eliminating');
             }
         }
+        // 清理所有残留的状态
         squares.forEach(s => s.classList.remove('eliminating'));
+        
         setTimeout(() => {
             if (!checkAndProcessMatches()) {
                 isProcessing = false;
@@ -351,34 +357,70 @@
     function checkGameState() {
         if (score >= targetScore) {
             level++;
-            moves = 30 + (level * 2); 
-            targetScore += 1000 + (level * 200); 
+            moves += 20; 
+            targetScore += 1200; 
             showPraise("LEVEL UP!");
             updateUI();
         } 
         if (moves <= 0 && !isProcessing) {
-            showResult();
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('resultModal').style.display = 'flex';
         }
     }
 
-    function showResult() {
-        const modal = document.getElementById('resultModal');
-        const finalScore = document.getElementById('finalScore');
-        const finalDetail = document.getElementById('finalDetail');
-        const note = document.getElementById('highScoreNote');
-        
-        finalScore.innerText = score;
-        finalDetail.innerText = `到达等级: ${level}`;
-        
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('match3_red_best', highScore);
-            highScoreElement.innerText = highScore;
-            note.style.display = 'block';
-        } else {
-            note.style.display = 'none';
+    function getMatchIndices() {
+        let matchSet = new Set();
+        for (let r = 0; r < height; r++) {
+            for (let c = 0; c < width - 2; c++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+1].dataset.mid && squares[i].dataset.mid === squares[i+2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+1); matchSet.add(i+2);
+                }
+            }
         }
-        modal.style.display = 'flex';
+        for (let c = 0; c < width; c++) {
+            for (let r = 0; r < height - 2; r++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+width].dataset.mid && squares[i].dataset.mid === squares[i+width*2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+width); matchSet.add(i+width*2);
+                }
+            }
+        }
+        return matchSet;
+    }
+
+    function hasAvailableMoves() {
+        for (let i = 0; i < width * height; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 1 && testSwap(i, i + 1)) return true;
+            if (r < height - 1 && testSwap(i, i + width)) return true;
+        }
+        return false;
+    }
+
+    function testSwap(id1, id2) {
+        let mids = squares.map(s => s.dataset.mid);
+        [mids[id1], mids[id2]] = [mids[id2], mids[id1]];
+        for (let i = 0; i < width * height; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 2 && mids[i] === mids[i+1] && mids[i] === mids[i+2]) return true;
+            if (r < height - 2 && mids[i] === mids[i+width] && mids[i] === mids[i+width*2]) return true;
+        }
+        return false;
+    }
+
+    function shuffleBoard() {
+        let mids = squares.map(s => s.dataset.mid);
+        for (let i = mids.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [mids[i], mids[j]] = [mids[j], mids[i]];
+        }
+        squares.forEach((tile, i) => {
+            tile.dataset.mid = mids[i];
+            const m = memberData.find(item => item.id == mids[i]);
+            tile.innerHTML = `<img src="${m.img}">`;
+        });
+        showPraise("重新洗牌", false);
     }
 
     function showPraise(msg, isWarning = false) {
@@ -390,50 +432,7 @@
         f.classList.add('pop-up');
     }
 
-    function hasAvailableMoves() {
-        for (let i = 0; i < width * width; i++) {
-            let r = Math.floor(i / width), c = i % width;
-            if (c < width - 1) if (testSwap(i, i + 1)) return true;
-            if (r < width - 1) if (testSwap(i, i + width)) return true;
-        }
-        return false;
-    }
-
-    function testSwap(id1, id2) {
-        let mids = squares.map(s => s.dataset.mid);
-        [mids[id1], mids[id2]] = [mids[id2], mids[id1]];
-        for (let i = 0; i < width * width; i++) {
-            let r = Math.floor(i / width), c = i % width;
-            if (c < width - 2 && mids[i] === mids[i+1] && mids[i] === mids[i+2]) return true;
-            if (r < width - 2 && mids[i] === mids[i+width] && mids[i] === mids[i+width*2]) return true;
-        }
-        return false;
-    }
-
-    function confirmReset() {
-        if(confirm("确定要重置并清空得分吗？")) initGame();
-    }
-
-    function getMatchIndices() {
-        let matchSet = new Set();
-        for (let r = 0; r < width; r++) {
-            for (let c = 0; c < width - 2; c++) {
-                let i = r * width + c;
-                if (squares[i].dataset.mid === squares[i+1].dataset.mid && squares[i].dataset.mid === squares[i+2].dataset.mid) {
-                    matchSet.add(i); matchSet.add(i+1); matchSet.add(i+2);
-                }
-            }
-        }
-        for (let c = 0; c < width; c++) {
-            for (let r = 0; r < width - 2; r++) {
-                let i = r * width + c;
-                if (squares[i].dataset.mid === squares[i+width].dataset.mid && squares[i].dataset.mid === squares[i+width*2].dataset.mid) {
-                    matchSet.add(i); matchSet.add(i+width); matchSet.add(i+width*2);
-                }
-            }
-        }
-        return matchSet;
-    }
+    function confirmReset() { if(confirm("确定重置吗？")) initGame(); }
     </script>
 </body>
 </html>
