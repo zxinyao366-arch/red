@@ -3,376 +3,436 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>蔚蓝之境 - 星辰荣耀版</title>
+    <title>R.E.D 消消乐 </title>
     <style>
-        :root {
-            --bg-dark: #020617;
-            --blue-glow: #38bdf8;
-            --accent-cyan: #22d3ee;
-            --card-bg: rgba(15, 23, 42, 0.8);
-            --tile-size: min(11.5vw, 8.5vh, 58px); 
+        :root { --red: #e60012; --gold: #ffd700; --bg: #0a0a0a; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background-color: var(--bg); color: white; font-family: 'PingFang SC', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 10px; margin: 0; min-height: 100vh; overflow-y: auto; 
         }
 
-        * {
-            box-sizing: border-box;
-            touch-action: manipulation;
-            -webkit-user-select: none;
-            user-select: none;
+        /* 顶部统计区 */
+        .header { text-align: center; width: 100%; max-width: 400px; margin-bottom: 10px; flex-shrink: 0; }
+        .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(230,0,18,0.3); }
+        .stat-label { font-size: 0.7rem; color: #888; display: block; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: var(--gold); }
+
+        /* 6x10 棋盘容器 */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(6, 1fr); 
+            gap: 6px; 
+            background: #1a1a1a; padding: 10px; 
+            border-radius: 15px; border: 2px solid #333; 
+            width: 95vw; max-width: 400px; 
+            margin: 10px auto; flex-shrink: 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        body {
-            margin: 0; padding: 0;
-            background-color: var(--bg-dark);
-            color: white;
-            font-family: -apple-system, system-ui, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
+        /* 方块基础 */
+        .tile { 
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; 
+            cursor: pointer; background: #222; position: relative; 
+            display: flex; align-items: center; justify-content: center;
+            overflow: visible; /* 允许发光效果溢出 */
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .tile img { 
+            width: 100%; height: 100%; object-fit: cover; 
+            border-radius: 6px; pointer-events: none; 
         }
 
-        /* --- 唯美静谧背景 --- */
-        .stars-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
-            z-index: -2;
-        }
-
-        .night-sky {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1; overflow: hidden;
-        }
-
-        .meteor {
-            position: absolute;
-            width: 1px; height: 100px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
-            transform: rotate(-35deg); opacity: 0;
-            animation: meteor-slow-fall var(--d) linear infinite;
-        }
-
-        @keyframes meteor-slow-fall {
-            0% { transform: translate(300px, -300px) rotate(-35deg); opacity: 0; }
-            5% { opacity: 0.3; }
-            20% { transform: translate(-600px, 600px) rotate(-35deg); opacity: 0; }
-            100% { opacity: 0; }
-        }
-
-        .meteor:nth-child(1) { left: 90%; top: 0; --d: 25s; animation-delay: 0s; }
-        .meteor:nth-child(2) { left: 60%; top: -50px; --d: 35s; animation-delay: 8s; }
-        .meteor:nth-child(3) { left: 30%; top: 0; --d: 30s; animation-delay: 15s; }
-        .meteor:nth-child(4) { left: 75%; top: 100px; --d: 40s; animation-delay: 2s; }
-        .meteor:nth-child(5) { left: 15%; top: -100px; --d: 32s; animation-delay: 22s; }
-
-        /* --- 状态栏 --- */
-        .status-bar {
-            width: 94%;
-            max-width: 440px;
-            margin-bottom: 15px;
-            padding: 12px 20px;
-            background: var(--card-bg);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-        }
-
-        .stats-main { display: flex; justify-content: space-between; align-items: flex-end; }
-        .stat-box { text-align: center; flex: 1; }
-        .label { font-size: 9px; color: var(--accent-cyan); letter-spacing: 1.5px; opacity: 0.7; text-transform: uppercase; }
-        .value { font-size: 24px; font-weight: 800; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4); display: block; }
-        .best-value { font-size: 16px; color: #fbbf24; } /* 金色显示最高分 */
-
-        .progress-container { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 10px; }
-        #progress-bar { width: 0%; height: 100%; background: var(--blue-glow); transition: width 0.3s; box-shadow: 0 0 12px var(--blue-glow); }
-
-        /* --- 游戏板 --- */
-        #game-board {
-            display: grid;
-            grid-template-columns: repeat(7, var(--tile-size));
-            grid-template-rows: repeat(7, var(--tile-size));
-            gap: 7px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            position: relative;
-        }
-
-        .tile {
-            width: var(--tile-size);
-            height: var(--tile-size);
-            border-radius: 10px;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .tile.selected {
-            transform: scale(1.1) translateY(-3px);
+        /* --- 核心修复：选中特效 --- */
+        .tile.selected { 
             z-index: 10;
-            border: 2px solid var(--accent-cyan);
-            box-shadow: 0 8px 25px rgba(34, 211, 238, 0.6);
+            transform: scale(1.15); /* 明显放大 */
+            outline: 3px solid #fff;
+            box-shadow: 0 0 20px 8px rgba(255, 255, 255, 0.8); /* 强力白色发光 */
+            animation: pulse 1s infinite alternate; /* 增加呼吸感 */
+        }
+        @keyframes pulse {
+            from { box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.6); }
+            to { box-shadow: 0 0 25px 10px rgba(255, 255, 255, 0.9); }
         }
 
-        .tile.pop { animation: popAnim 0.35s ease-out forwards; }
-        @keyframes popAnim { 
-            0% { transform: scale(1); filter: brightness(2); } 
-            100% { transform: scale(0); opacity: 0; } 
+        /* --- 核心修复：消除特效 --- */
+        .tile.eliminating { 
+            animation: eliminateAnim 0.3s ease-in forwards;
+            pointer-events: none;
+        }
+        @keyframes eliminateAnim {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); filter: brightness(2); }
+            100% { transform: scale(0); opacity: 0; }
         }
 
-        /* --- 鼓励语与消息 --- */
-        .praise-text {
-            position: absolute;
-            width: 100%; text-align: center;
-            font-size: 28px; font-weight: 900;
-            color: white; text-shadow: 0 0 15px var(--blue-glow);
-            pointer-events: none; z-index: 100;
-            animation: praiseMove 1s ease-out forwards;
+        /* 控制按钮 */
+        .controls { margin: 15px 0 30px 0; }
+        .btn { 
+            background: var(--red); color: white; border: none; 
+            padding: 12px 35px; border-radius: 25px; cursor: pointer; 
+            font-weight: bold; font-size: 1rem; box-shadow: 0 4px 0 #900;
         }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #900; }
+        .btn-reset { background: #333; box-shadow: 0 4px 0 #111; }
 
-        @keyframes praiseMove {
-            0% { transform: scale(0.5); opacity: 0; }
-            20% { transform: scale(1.2); opacity: 1; }
-            100% { transform: translateY(-60px) scale(1); opacity: 0; }
+        /* 弹窗与文字反馈 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none; justify-content: center; align-items: center;
+            z-index: 9999;
         }
-
-        .overlay-msg {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 36px; font-weight: 900; color: var(--accent-cyan);
-            opacity: 0; pointer-events: none; z-index: 200;
+        .modal-content {
+            background: #1a1a1a; border: 2px solid var(--red);
+            padding: 30px; border-radius: 20px; text-align: center;
+            width: 85%; max-width: 340px;
         }
-        .show-msg { animation: msgAnim 1.6s forwards; }
-        @keyframes msgAnim {
-            0% { opacity: 0; transform: translate(-50%, 0); }
-            15% { opacity: 1; transform: translate(-50%, -50%); }
-            85% { opacity: 1; transform: translate(-50%, -50%); }
-            100% { opacity: 0; transform: translate(-50%, -120%); }
+        #feedback {
+            position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 2.5rem; font-weight: bold; color: var(--gold);
+            text-shadow: 0 0 15px rgba(255,215,0,0.8);
+            pointer-events: none; z-index: 1000; opacity: 0;
+        }
+        .pop-up { animation: popUp 0.8s ease-out forwards; }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
         }
     </style>
 </head>
 <body>
-    <div class="stars-bg"></div>
-    <div class="night-sky">
-        <div class="meteor"></div><div class="meteor"></div>
-        <div class="meteor"></div><div class="meteor"></div><div class="meteor"></div>
-    </div>
 
-    <div class="status-bar">
-        <div class="stats-main">
-            <div class="stat-box"><span class="label">Stage</span><span id="level" class="value">1</span></div>
-            <div class="stat-box"><span class="label">Score</span><span id="score" class="value">0</span></div>
-            <div class="stat-box"><span class="label">Best</span><span id="best-score" class="value best-value">0</span></div>
+    <div id="feedback">Good！</div>
+
+    <div id="disclaimerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>R.E.D 消消乐</h2>
+            <p style="text-align: left; font-size: 0.9rem; line-height: 1.6; color: #ccc;">
+                • 交换头像，连成3个即可消除。<br>
+                • 移动必须产生消除，否则扣除1步。<br>
+                • 消除4个及以上奖励1步。<br>
+                • 达到目标分升级并大幅恢复体力。
+            </p>
+            <button class="btn" onclick="acceptDisclaimer()">开启挑战</button>
         </div>
-        <div class="progress-container"><div id="progress-bar"></div></div>
     </div>
 
-    <div id="game-board"></div>
-    <div id="msg-layer" class="overlay-msg">LEVEL UP</div>
+    <div id="resultModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>挑战结束</h2>
+            <span style="color: #888; font-size: 0.9rem;">最终得分</span>
+            <div id="finalScore" style="font-size: 3rem; font-weight: bold; color: var(--gold); margin: 10px 0;">0</div>
+            <button class="btn" onclick="initGame()">重新开始</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">最高纪录: <span id="high-score">0</span></div>
+        <div class="stats-container">
+            <div class="stat-box">
+                <span class="stat-label">体力(步数)</span>
+                <span id="moves" class="stat-value">35</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">当前分数</span>
+                <span id="score" class="stat-value">0</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">目标/等级</span>
+                <span id="goal-level" class="stat-value">500 / 1</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="controls">
+        <button class="btn btn-reset" onclick="confirmReset()">重置游戏</button>
+    </div>
 
     <script>
-        const SIZE = 7; 
-        const IMG_COUNT = 6; 
-        const images = Array.from({length: IMG_COUNT}, (_, i) => `./${i + 1}.jpg`);
+    const width = 6;
+    const height = 10;
+    const gridElement = document.getElementById('grid');
+    const scoreElement = document.getElementById('score');
+    const movesElement = document.getElementById('moves');
+    const goalLevelElement = document.getElementById('goal-level');
+    const highScoreElement = document.getElementById('high-score');
+    
+    let squares = [];
+    let score = 0;
+    let moves = 35; 
+    let level = 1;
+    let targetScore = 500;
+    let highScore = localStorage.getItem('match3_red_best') || 0;
+    let firstId = null;
+    let isProcessing = false;
 
-        let grid = [];
-        let score = 0;
-        let level = 1;
-        let highScore = localStorage.getItem('qianna_match_best') || 0;
-        let selectedTile = null;
-        let isProcessing = false;
-        let comboCount = 0;
+    const baseUrl = "https://cdn.jsdelivr.net/gh/zxinyao366-arch/red@main/";
+    const memberData = [
+        { id: 0, img: baseUrl + 'tile0.jpg' },
+        { id: 1, img: baseUrl + 'tile1.jpg' },
+        { id: 2, img: baseUrl + 'tile2.jpg' },
+        { id: 3, img: baseUrl + 'tile3.jpg' },
+        { id: 4, img: baseUrl + 'tile4.jpg' },
+        { id: 5, img: baseUrl + 'tile5.jpg' },
+        { id: 6, img: baseUrl + 'tile6.jpg' }
+    ];
 
-        const board = document.getElementById('game-board');
-        const scoreDisplay = document.getElementById('score');
-        const bestDisplay = document.getElementById('best-score');
-        const levelDisplay = document.getElementById('level');
-        const msgLayer = document.getElementById('msg-layer');
-        const progressBar = document.getElementById('progress-bar');
+    highScoreElement.innerText = highScore;
 
-        function init() {
-            bestDisplay.innerText = highScore;
-            grid = [];
-            board.innerHTML = '';
-            for (let r = 0; r < SIZE; r++) {
-                grid[r] = [];
-                for (let c = 0; c < SIZE; c++) {
-                    let type = Math.floor(Math.random() * IMG_COUNT);
-                    grid[r][c] = type;
-                    const el = document.createElement('div');
-                    el.className = 'tile';
-                    el.id = `tile-${r}-${c}`;
-                    el.onpointerdown = (e) => { e.preventDefault(); handleSelect(r, c); };
-                    board.appendChild(el);
-                    updateTileEl(r, c);
-                }
-            }
-            silentInit();
+    window.onload = function() {
+        if (!localStorage.getItem('redGameRulesV3')) {
+            document.getElementById('disclaimerModal').style.display = 'flex';
+        } else {
+            initGame();
         }
+    };
 
-        async function silentInit() {
-            isProcessing = true;
-            while(await resolveMatches(true)) {}
-            isProcessing = false;
-            checkDeadlock();
+    function acceptDisclaimer() {
+        localStorage.setItem('redGameRulesV3', 'true');
+        document.getElementById('disclaimerModal').style.display = 'none';
+        initGame();
+    }
+
+    function initGame() {
+        document.getElementById('resultModal').style.display = 'none';
+        gridElement.innerHTML = '';
+        squares = [];
+        score = 0;
+        moves = 35; 
+        level = 1;
+        targetScore = 500;
+        updateUI();
+        isProcessing = false;
+        createBoard();
+    }
+
+    function updateUI() {
+        scoreElement.innerText = score;
+        movesElement.innerText = moves;
+        goalLevelElement.innerText = `${targetScore} / ${level}`;
+        if (score > highScore) {
+            highScore = score;
+            highScoreElement.innerText = highScore;
+            localStorage.setItem('match3_red_best', highScore);
         }
+    }
 
-        function updateTileEl(r, c) {
-            const el = document.getElementById(`tile-${r}-${c}`);
-            const type = grid[r][c];
-            if (type === -1) {
-                el.style.backgroundImage = 'none'; el.style.opacity = '0';
-            } else {
-                el.style.opacity = '1';
-                el.style.backgroundImage = `url('${images[type]}')`;
-                el.style.transform = 'scale(1)';
-            }
+    function createBoard() {
+        for (let i = 0; i < width * height; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.id = i;
+            gridElement.appendChild(tile);
+            squares.push(tile);
         }
+        fillBoard();
+    }
 
-        async function handleSelect(r, c) {
-            if (isProcessing) return;
-            const el = document.getElementById(`tile-${r}-${c}`);
-            if (!selectedTile) {
-                selectedTile = { r, c, el };
-                el.classList.add('selected');
-            } else {
-                const dist = Math.abs(r - selectedTile.r) + Math.abs(c - selectedTile.c);
-                if (dist === 1) {
-                    isProcessing = true;
-                    selectedTile.el.classList.remove('selected');
-                    await swap(selectedTile.r, selectedTile.c, r, c);
-                    comboCount = 0; 
-                    if (!await resolveMatches()) { await swap(selectedTile.r, selectedTile.c, r, c); }
-                    selectedTile = null;
-                    isProcessing = false;
-                    checkDeadlock();
-                } else {
-                    selectedTile.el.classList.remove('selected');
-                    selectedTile = { r, c, el }; el.classList.add('selected');
-                }
-            }
-        }
+    function fillBoard() {
+        squares.forEach((tile, i) => {
+            let randomMember;
+            let row = Math.floor(i / width);
+            let col = i % width;
+            do {
+                randomMember = memberData[Math.floor(Math.random() * memberData.length)];
+            } while (
+                (col > 1 && squares[i-1].dataset.mid == randomMember.id && squares[i-2].dataset.mid == randomMember.id) ||
+                (row > 1 && squares[i-width].dataset.mid == randomMember.id && squares[i-width*2].dataset.mid == randomMember.id)
+            );
+            tile.dataset.mid = randomMember.id;
+            tile.innerHTML = `<img src="${randomMember.img}">`;
+        });
+        if (!hasAvailableMoves()) shuffleBoard();
+    }
 
-        async function swap(r1, c1, r2, c2) {
-            const t1 = grid[r1][c1]; const t2 = grid[r2][c2];
-            grid[r1][c1] = t2; grid[r2][c2] = t1;
-            updateTileEl(r1, c1); updateTileEl(r2, c2);
-            await new Promise(res => setTimeout(res, 250));
-        }
+    gridElement.onclick = function(e) {
+        if (isProcessing || moves <= 0) return;
+        const target = e.target.closest('.tile');
+        if (!target) return;
+        const cid = parseInt(target.id);
 
-        async function resolveMatches(silent = false) {
-            let matched = new Set();
-            for(let r=0; r<SIZE; r++) for(let c=0; c<SIZE-2; c++) 
-                if(grid[r][c]!==-1 && grid[r][c]===grid[r][c+1] && grid[r][c]===grid[r][c+2]) 
-                    { matched.add(`${r},${c}`); matched.add(`${r},${c+1}`); matched.add(`${r},${c+2}`); }
-            for(let c=0; c<SIZE; c++) for(let r=0; r<SIZE-2; r++) 
-                if(grid[r][c]!==-1 && grid[r][c]===grid[r+1][c] && grid[r][c]===grid[r+2][c]) 
-                    { matched.add(`${r},${c}`); matched.add(`${r+1},${c}`); matched.add(`${r+2},${c}`); }
+        if (firstId === null) {
+            firstId = cid;
+            squares[firstId].classList.add('selected');
+        } else {
+            const id1 = firstId;
+            const id2 = cid;
+            const isAdj = Math.abs(Math.floor(id1/width) - Math.floor(id2/width)) + Math.abs((id1%width) - (id2%width)) === 1;
 
-            if (matched.size > 0) {
-                if (!silent) {
-                    comboCount++;
-                    updateScore(matched.size);
-                    triggerPraise(matched.size, comboCount);
-                }
-                matched.forEach(pos => {
-                    const [r, c] = pos.split(',').map(Number);
-                    document.getElementById(`tile-${r}-${c}`).classList.add('pop');
-                    grid[r][c] = -1;
-                });
-                await new Promise(res => setTimeout(res, silent ? 50 : 300));
-                await fillGrid(silent);
-                await resolveMatches(silent);
-                return true;
-            }
-            return false;
-        }
+            // 先移除之前的选中样式
+            squares[id1].classList.remove('selected');
 
-        function updateScore(matchSize) {
-            score += matchSize * 10 * level;
-            scoreDisplay.innerText = score;
-            if (score > highScore) {
-                highScore = score;
-                bestDisplay.innerText = highScore;
-                localStorage.setItem('qianna_match_best', highScore);
-            }
-            progressBar.style.width = `${(score % 1000) / 10}%`;
-            if (score >= level * 1000) { level++; levelDisplay.innerText = level; showMsg("LEVEL UP"); }
-        }
-
-        function triggerPraise(size, combo) {
-            let txt = "";
-            if (combo > 1) txt = `Combo x${combo}!`;
-            else if (size === 3) txt = "Nice!";
-            else if (size === 4) txt = "Great!";
-            else if (size >= 5) txt = "Amazing!";
-
-            const el = document.createElement('div');
-            el.className = 'praise-text';
-            el.innerText = txt;
-            el.style.top = "45%"; 
-            board.appendChild(el);
-            setTimeout(() => el.remove(), 1000);
-        }
-
-        async function fillGrid(silent) {
-            for (let c = 0; c < SIZE; c++) {
-                let empty = SIZE - 1;
-                for (let r = SIZE - 1; r >= 0; r--) {
-                    if (grid[r][c] !== -1) {
-                        grid[empty][c] = grid[r][c];
-                        if (empty !== r) grid[r][c] = -1;
-                        empty--;
+            if (isAdj) {
+                isProcessing = true;
+                moves--;
+                updateUI();
+                swap(id1, id2);
+                setTimeout(() => {
+                    if (!checkAndProcessMatches()) {
+                        swap(id1, id2);
+                        showPraise("无效移动", true);
+                        isProcessing = false;
+                        checkGameState();
                     }
-                }
-                for (let r = empty; r >= 0; r--) { grid[r][c] = Math.floor(Math.random() * IMG_COUNT); }
+                }, 300);
+            } else {
+                // 如果点选了非相邻的，切换选择对象
+                firstId = cid;
+                squares[firstId].classList.add('selected');
+                return;
             }
-            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-                const el = document.getElementById(`tile-${r}-${c}`);
-                el.classList.remove('pop'); updateTileEl(r, c);
-            }
-            await new Promise(res => setTimeout(res, silent ? 50 : 250));
+            firstId = null;
         }
+    };
 
-        function checkDeadlock() { if (!hasMoves()) { showMsg("SHUFFLING..."); shuffle(); } }
-        function hasMoves() {
-            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-                if (c < SIZE - 1 && canMatch(r, c, r, c + 1)) return true;
-                if (r < SIZE - 1 && canMatch(r, c, r + 1, c)) return true;
+    function swap(id1, id2) {
+        const m1 = squares[id1].dataset.mid;
+        const h1 = squares[id1].innerHTML;
+        squares[id1].dataset.mid = squares[id2].dataset.mid;
+        squares[id1].innerHTML = squares[id2].innerHTML;
+        squares[id2].dataset.mid = m1;
+        squares[id2].innerHTML = h1;
+    }
+
+    function checkAndProcessMatches() {
+        let matches = getMatchIndices();
+        if (matches.size > 0) {
+            if (matches.size >= 4) { moves += 1; showPraise("连消奖励+1"); }
+            else { showPraise(null); }
+            score += matches.size * 10;
+            updateUI();
+            
+            // 触发消除动画
+            matches.forEach(idx => squares[idx].classList.add('eliminating'));
+            
+            setTimeout(() => applyGravity(), 300);
+            return true;
+        }
+        return false;
+    }
+
+    function applyGravity() {
+        for (let c = 0; c < width; c++) {
+            let emptySpaces = 0;
+            for (let r = height - 1; r >= 0; r--) {
+                let idx = r * width + c;
+                if (squares[idx].classList.contains('eliminating')) {
+                    emptySpaces++;
+                } else if (emptySpaces > 0) {
+                    let targetIdx = (r + emptySpaces) * width + c;
+                    squares[targetIdx].dataset.mid = squares[idx].dataset.mid;
+                    squares[targetIdx].innerHTML = squares[idx].innerHTML;
+                    squares[idx].classList.add('eliminating'); // 标记为旧位需要清空
+                }
             }
-            return false;
-        }
-        function canMatch(r1, c1, r2, c2) {
-            let temp = grid.map(row => [...row]);
-            [temp[r1][c1], temp[r2][c2]] = [temp[r2][c2], temp[r1][c1]];
-            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-                let t = temp[r][c]; if (t === -1) continue;
-                if (c < SIZE - 2 && t === temp[r][c+1] && t === temp[r][c+2]) return true;
-                if (r < SIZE - 2 && t === temp[r+1][c] && t === temp[r+2][c]) return true;
+            // 填充顶部新出的方块
+            for (let r = 0; r < emptySpaces; r++) {
+                let idx = r * width + c;
+                let m = memberData[Math.floor(Math.random() * memberData.length)];
+                squares[idx].dataset.mid = m.id;
+                squares[idx].innerHTML = `<img src="${m.img}">`;
+                squares[idx].classList.remove('eliminating');
             }
-            return false;
         }
-        function shuffle() {
-            let tiles = grid.flat();
-            for (let i = tiles.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+        // 清理所有残留的状态
+        squares.forEach(s => s.classList.remove('eliminating'));
+        
+        setTimeout(() => {
+            if (!checkAndProcessMatches()) {
+                isProcessing = false;
+                if (!hasAvailableMoves()) shuffleBoard();
+                checkGameState();
             }
-            let i = 0;
-            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) { grid[r][c] = tiles[i++]; updateTileEl(r, c); }
-            if (!hasMoves()) shuffle();
+        }, 300);
+    }
+
+    function checkGameState() {
+        if (score >= targetScore) {
+            level++;
+            moves += 20; 
+            targetScore += 1200; 
+            showPraise("LEVEL UP!");
+            updateUI();
+        } 
+        if (moves <= 0 && !isProcessing) {
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('resultModal').style.display = 'flex';
         }
-        function showMsg(txt) {
-            msgLayer.innerText = txt; msgLayer.classList.add('show-msg');
-            setTimeout(() => msgLayer.classList.remove('show-msg'), 1600);
+    }
+
+    function getMatchIndices() {
+        let matchSet = new Set();
+        for (let r = 0; r < height; r++) {
+            for (let c = 0; c < width - 2; c++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+1].dataset.mid && squares[i].dataset.mid === squares[i+2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+1); matchSet.add(i+2);
+                }
+            }
         }
-        window.onload = init;
+        for (let c = 0; c < width; c++) {
+            for (let r = 0; r < height - 2; r++) {
+                let i = r * width + c;
+                if (squares[i].dataset.mid === squares[i+width].dataset.mid && squares[i].dataset.mid === squares[i+width*2].dataset.mid) {
+                    matchSet.add(i); matchSet.add(i+width); matchSet.add(i+width*2);
+                }
+            }
+        }
+        return matchSet;
+    }
+
+    function hasAvailableMoves() {
+        for (let i = 0; i < width * height; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 1 && testSwap(i, i + 1)) return true;
+            if (r < height - 1 && testSwap(i, i + width)) return true;
+        }
+        return false;
+    }
+
+    function testSwap(id1, id2) {
+        let mids = squares.map(s => s.dataset.mid);
+        [mids[id1], mids[id2]] = [mids[id2], mids[id1]];
+        for (let i = 0; i < width * height; i++) {
+            let r = Math.floor(i / width), c = i % width;
+            if (c < width - 2 && mids[i] === mids[i+1] && mids[i] === mids[i+2]) return true;
+            if (r < height - 2 && mids[i] === mids[i+width] && mids[i] === mids[i+width*2]) return true;
+        }
+        return false;
+    }
+
+    function shuffleBoard() {
+        let mids = squares.map(s => s.dataset.mid);
+        for (let i = mids.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [mids[i], mids[j]] = [mids[j], mids[i]];
+        }
+        squares.forEach((tile, i) => {
+            tile.dataset.mid = mids[i];
+            const m = memberData.find(item => item.id == mids[i]);
+            tile.innerHTML = `<img src="${m.img}">`;
+        });
+        showPraise("重新洗牌", false);
+    }
+
+    function showPraise(msg, isWarning = false) {
+        const f = document.getElementById('feedback');
+        f.innerText = msg || ["Good！", "Great！", "Amazing！"][Math.floor(Math.random()*3)];
+        f.style.color = isWarning ? "#ff4444" : "var(--gold)";
+        f.classList.remove('pop-up');
+        void f.offsetWidth;
+        f.classList.add('pop-up');
+    }
+
+    function confirmReset() { if(confirm("确定重置吗？")) initGame(); }
     </script>
 </body>
 </html>
